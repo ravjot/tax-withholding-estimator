@@ -1,4 +1,4 @@
-<fg-collection th:attr="path=${path}, condition=${condition}, operator=${operator}, itemName=${itemName}, disallowEmpty=${disallowEmpty}">
+<fg-collection th:attr="path=${path}, condition=${condition}, operator=${operator}, itemName=${itemName}, disallowEmpty=${disallowEmpty}, determiner=${determiner}">
     <div class="usa-accordion usa-accordion--bordered usa-accordion--multiselectable margin-bottom-3" data-allow-multiple>
         <template class="fg-collection__item-template">
             <h4 class="usa-accordion__heading">
@@ -41,8 +41,11 @@
         </svg>
         <th th:if="${itemName == ''}" th:text="#{components.fg-collection.buttons.add-item}"></th>
         <th th:if="${itemName != ''}">
-          <th:block th:text="#{components.fg-collection.buttons.add}"></th:block>
-          <th:block th:text="${itemName}"></th:block>
+            <th:block th:text="#{components.fg-collection.buttons.add}"></th:block>
+            <th th:if="${determiner != ''}">
+                <span class="fg-collection__determiner" th:text="#{components.fg-collection.determiners.__${determiner}__}"></span>
+            </th>
+            <span th:classappend="${!#strings.contains(itemName, 'Social Security')} ? 'text-lowercase'" th:text="${itemName}"></span>
         </th>
     </button>
 </fg-collection>

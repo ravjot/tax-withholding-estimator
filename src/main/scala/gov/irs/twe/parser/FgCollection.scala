@@ -23,6 +23,7 @@ case class FgCollection(
     nodes: List[FgCollectionNode],
     factDictionary: FactDictionary,
     pageRoute: String,
+    determiner: String,
 ) {
   def html(templateEngine: TweTemplateEngine): String = {
     val collectionFacts = this.nodes
@@ -45,6 +46,7 @@ case class FgCollection(
     context.setVariable("collectionFacts", collectionFacts)
     context.setVariable("condition", this.condition.map(_.path).orNull)
     context.setVariable("operator", this.condition.map(_.operator.toString).orNull)
+    context.setVariable("determiner", determiner)
 
     templateEngine.process("nodes/fg-collection", context)
   }
@@ -56,6 +58,7 @@ object FgCollection {
     val itemName = node \@ "item-name"
     val disallowEmpty = node \@ "disallow-empty"
     val condition = Condition.getCondition(node, factDictionary)
+    val determiner = node \@ "determiner"
 
     validateFgCollection(path, factDictionary)
 
@@ -72,7 +75,7 @@ object FgCollection {
       )
       .toList
 
-    FgCollection(path, itemName, disallowEmpty, condition, nodes, factDictionary, pageRoute)
+    FgCollection(path, itemName, disallowEmpty, condition, nodes, factDictionary, pageRoute, determiner)
   }
 
   private def validateFgCollection(path: String, factDictionary: FactDictionary): Unit = {

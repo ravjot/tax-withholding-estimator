@@ -8,6 +8,9 @@ components:
       remove-item: Remove item
       add: Add
       add-item: Add item
+    determiners:
+      another: another
+      more: more
   modal:
     close: Close this window
     ok: Okay
