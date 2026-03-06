@@ -30,7 +30,7 @@ package gov.irs.twe.scenarios
 import com.github.tototoshi.csv.*
 import gov.irs.factgraph.{ types, FactDefinition, Graph }
 import gov.irs.factgraph.compnodes.{ EnumNode, MultiEnumNode }
-import gov.irs.factgraph.types.{ Day, Dollar }
+import gov.irs.factgraph.types.{ Day, Dollar, Enum as FgEnum }
 import gov.irs.twe.loadTweFactDictionary
 import scala.util.{ Failure, Success, Try }
 
@@ -133,58 +133,31 @@ private def parseScenario(rows: List[List[String]], scenarioColumn: Int): Scenar
   // The resulting map is factPath -> spreadsheetRowValue
   var spreadsheetFacts = SHEET_ROW_TO_WRITABLE_FACT.map((sheetKey, factPath) => factPath -> csv(sheetKey))
 
-// '/wantsItemized' is the opposite of '/wantsStandardDeduction', so we need to flip the value from our mapping
-  val wantsItemized = csv("Itemize even if smaller (1=yes)") match {
-    case "1" => "0"
-    case "0" => "1"
-  }
-
-  spreadsheetFacts = spreadsheetFacts + (s"/wantsStandardDeduction" -> wantsItemized)
-  // convert SS monthly withholding to a percent and handle as an enum
-  val monthlyBenefit1 = csv("SS monthly benefit").replace("$", "").replace(",", "").toDouble
-  val monthlyWithholding1 = csv("SS monthly withholding").replace("$", "").replace(",", "").toDouble
-  val withholdingEnum1 =
-    if (monthlyWithholding1 == 0.0) "zero"
-    else
-      monthlyWithholding1 / monthlyBenefit1 match {
-        case 0.07 => "seven"
-        case 0.1  => "ten"
-        case 0.12 => "twelve"
-        case 0.22 => "twentyTwo"
-        case _    => throw Exception("Invalid ratio for self social security tax withholdings")
-      }
-  spreadsheetFacts = spreadsheetFacts + (s"/socialSecuritySources/#$SS_ID/withheldRate" -> withholdingEnum1)
-
-  val monthlyBenefit2 = csv("SS monthly benefit2").replace("$", "").replace(",", "").toDouble
-  val monthlyWithholding2 = csv("SS monthly withholding2").replace("$", "").replace(",", "").toDouble
-  val withholdingEnum2 =
-    if (monthlyWithholding2 == 0.0) "zero"
-    else
-      monthlyWithholding2 / monthlyBenefit2 match {
-        case 0.07 => "seven"
-        case 0.1  => "ten"
-        case 0.12 => "twelve"
-        case 0.22 => "twentyTwo"
-        case _    => throw Exception("Invalid ratio for spouse social security tax withholdings")
-      }
-  spreadsheetFacts = spreadsheetFacts + (s"/socialSecuritySources/#$SS_SPOUSE_ID/withheldRate" -> withholdingEnum2)
-
   // Create the fact graph
   val tweFactDictionary = loadTweFactDictionary()
   val factGraph = Graph(tweFactDictionary.factDictionary)
 
-  // Set social security collection
+  // Add the Social Security sources to the fact graph
   ALL_SS_SOURCES.foreach(source => factGraph.addToCollection("/socialSecuritySources", source))
 
-  // Self-employment collection
+  // Add the self-employment jobs the fact graph
   ALL_SE_SOURCES.foreach(source => factGraph.addToCollection("/selfEmploymentSources", source))
+  factGraph.set(s"/selfEmploymentSources/#$SE_SELF_ID/filerAssignment", FgEnum("self", "/filerAssignmentOption"))
+  factGraph.set(s"/selfEmploymentSources/#$SE_SPOUSE_ID/filerAssignment", FgEnum("spouse", "/filerAssignmentOption"))
 
-  // Add the 5 jobs to the fact graph
+  // Add the W-2 jobs to the fact graph
   ALL_JOBS.foreach(job => factGraph.addToCollection("/jobs", job))
+  factGraph.set(s"/jobs/#$PREVIOUS_SELF_JOB_ID/filerAssignment", FgEnum("self", "/filerAssignmentOption"))
+  factGraph.set(s"/jobs/#$PREVIOUS_SPOUSE_JOB_ID/filerAssignment", FgEnum("spouse", "/filerAssignmentOption"))
+  factGraph.set(s"/jobs/#$JOB_1_ID/filerAssignment", FgEnum("self", "/filerAssignmentOption"))
+  factGraph.set(s"/jobs/#$JOB_2_ID/filerAssignment", FgEnum("self", "/filerAssignmentOption"))
+  factGraph.set(s"/jobs/#$JOB_3_ID/filerAssignment", FgEnum("spouse", "/filerAssignmentOption"))
+  factGraph.set(s"/jobs/#$JOB_4_ID/filerAssignment", FgEnum("spouse", "/filerAssignmentOption"))
 
+  // TODO: get pensions on their own rows
   if (job1IsPension) {
     factGraph.addToCollection("/pensions", JOB_1_ID)
-    factGraph.set(s"/pensions/#$JOB_1_ID/filerAssignment", new types.Enum(Some("self"), "/filerAssignmentOption"))
+    factGraph.set(s"/pensions/#$JOB_1_ID/filerAssignment", FgEnum("self", "/filerAssignmentOption"))
 
     // Set job to be deleted and add info as pension
     spreadsheetFacts = spreadsheetFacts + (s"/jobs/#$JOB_1_ID/amountLastPaycheck" -> "$0")
@@ -204,7 +177,7 @@ private def parseScenario(rows: List[List[String]], scenarioColumn: Int): Scenar
   }
   if (job2IsPension) {
     factGraph.addToCollection("/pensions", JOB_2_ID)
-    factGraph.set(s"/pensions/#$JOB_2_ID/filerAssignment", new types.Enum(Some("self"), "/filerAssignmentOption"))
+    factGraph.set(s"/pensions/#$JOB_2_ID/filerAssignment", FgEnum("self", "/filerAssignmentOption"))
 
     // Set job to be deleted and add info as pension
     spreadsheetFacts = spreadsheetFacts + (s"/jobs/#$JOB_2_ID/amountLastPaycheck" -> "$0")
@@ -223,24 +196,24 @@ private def parseScenario(rows: List[List[String]], scenarioColumn: Int): Scenar
     spreadsheetFacts = spreadsheetFacts + (s"/pensions/#$JOB_2_ID/yearToDateWithholding" -> csv("taxWhYTD2"))
   }
 
-  factGraph.set(s"/jobs/#$PREVIOUS_SELF_JOB_ID/filerAssignment", new types.Enum(Some("self"), "/filerAssignmentOption"))
-  factGraph.set(
-    s"/jobs/#$PREVIOUS_SPOUSE_JOB_ID/filerAssignment",
-    new types.Enum(Some("spouse"), "/filerAssignmentOption"),
-  )
-  factGraph.set(s"/jobs/#$JOB_1_ID/filerAssignment", new types.Enum(Some("self"), "/filerAssignmentOption"))
-  factGraph.set(s"/jobs/#$JOB_2_ID/filerAssignment", new types.Enum(Some("self"), "/filerAssignmentOption"))
-  factGraph.set(s"/jobs/#$JOB_3_ID/filerAssignment", new types.Enum(Some("spouse"), "/filerAssignmentOption"))
-  factGraph.set(s"/jobs/#$JOB_4_ID/filerAssignment", new types.Enum(Some("spouse"), "/filerAssignmentOption"))
-
-  factGraph.set(
-    s"/selfEmploymentSources/#$SE_SELF_ID/filerAssignment",
-    new types.Enum(Some("self"), "/filerAssignmentOption"),
-  )
-  factGraph.set(
-    s"/selfEmploymentSources/#$SE_SPOUSE_ID/filerAssignment",
-    new types.Enum(Some("spouse"), "/filerAssignmentOption"),
-  )
+  def ssWithholding(benefitFactName: String, withholdingFactName: String): types.Enum = {
+    val ssBenefit = csv(benefitFactName).replace("$", "").replace(",", "").toDouble
+    val ssWithholding = csv(withholdingFactName).replace("$", "").replace(",", "").toDouble
+    val withholdingRate = ssWithholding / ssBenefit match {
+      case 0            => "zero"
+      case 0.07         => "seven"
+      case 0.1          => "ten"
+      case 0.12         => "twelve"
+      case 0.22         => "twentyTwo"
+      case x if x.isNaN => "zero"
+      case x            => throw Exception(s"Invalid ratio for self social security tax withholdings: $x")
+    }
+    FgEnum(withholdingRate, "/socialSecurityWithheldTaxesOptions")
+  }
+  val ssWithholdingRateSelf = ssWithholding("SS monthly benefit", "SS monthly withholding")
+  val ssWithholdingRateSpouse = ssWithholding("SS monthly benefit2", "SS monthly withholding2")
+  factGraph.set(s"/socialSecuritySources/#$SS_ID/withheldRate", ssWithholdingRateSelf)
+  factGraph.set(s"/socialSecuritySources/#$SS_SPOUSE_ID/withheldRate", ssWithholdingRateSpouse)
 
   // Set dummy dates for the past jobs
   // This is sort of a hack; we should just ask for spreadsheets that include "previous jobs" as regular jobs
@@ -249,12 +222,12 @@ private def parseScenario(rows: List[List[String]], scenarioColumn: Int): Scenar
     factGraph.set(s"/jobs/#$jobId/writableEndDate", Day("2026-01-15"))
   })
 
-  // These are facts that we need to set that aren't in the spreadsheets
+  // There's no spreadsheet field for this, we assume it's false
   factGraph.set("/secondaryFilerIsClaimedOnAnotherReturn", false)
 
+  // Set the rest of the facts based on mappings
   spreadsheetFacts.foreach { (factPath, value) =>
     val definition = tweFactDictionary.factDictionary.getDefinition(factPath)
-
     val result = Try {
       definition.typeNode match {
         case "BooleanNode" => convertBoolean(value)
@@ -266,22 +239,21 @@ private def parseScenario(rows: List[List[String]], scenarioColumn: Int): Scenar
       }
     }
     result match {
-      case Success(convertedValue) =>
-        factGraph.set(factPath, convertedValue)
-
-      case Failure(e) =>
-        throw Exception(s"Unable to process fact '$factPath' with value '$value': ${e.getMessage}")
+      case Success(convertedValue) => factGraph.set(factPath, convertedValue)
+      case Failure(e) => throw Exception(s"Unable to process fact '$factPath' with value '$value': ${e.getMessage}")
     }
   }
 
-  // CTC and ODC eligible dependents
+  val wantsItemizedDeduction = csv("Itemize even if smaller (1=yes)") == "1"
+  factGraph.set(s"/wantsStandardDeduction", !wantsItemizedDeduction)
+
+  // Calculate CTC and ODC eligible dependents
   val childKeys = (1 to 4).map(i => s"Child${i}Age")
   val ages = childKeys.flatMap(key => csv.get(key).map(_.toInt))
   val ctcCount = ages.count(age => age > 0 && age < 18)
-
   factGraph.set("/ctcEligibleDependents", ctcCount)
 
-  // Calculated facts
+  // Set age facts
   factGraph.set("/primaryFilerAge25OrOlderForEitc", csv("User Age").toInt >= 25)
   val spouseAge = csv("Spouse Age").toInt
   if (spouseAge > 0) {
@@ -371,38 +343,38 @@ def convertEnum(value: String, factDefinition: FactDefinition): types.Enum = {
   optionsEnumPath match {
     case "/filingStatusOptions" =>
       value match {
-        case "1" => new types.Enum(Some("single"), "/filingStatusOptions")
-        case "2" => new types.Enum(Some("marriedFilingJointly"), "/filingStatusOptions")
-        case "3" => new types.Enum(Some("marriedFilingSeparately"), "/filingStatusOptions")
-        case "4" => new types.Enum(Some("headOfHousehold"), "/filingStatusOptions")
-        case "5" => new types.Enum(Some("qualifiedSurvivingSpouse"), "/filingStatusOptions")
+        case "1" => FgEnum("single", "/filingStatusOptions")
+        case "2" => FgEnum("marriedFilingJointly", "/filingStatusOptions")
+        case "3" => FgEnum("marriedFilingSeparately", "/filingStatusOptions")
+        case "4" => FgEnum("headOfHousehold", "/filingStatusOptions")
+        case "5" => FgEnum("qualifiedSurvivingSpouse", "/filingStatusOptions")
         case _   => throw Exception(s"$value is not a known enum for /$optionsEnumPath")
       }
     case "/payFrequencyOptions" =>
       value match {
-        case "1" => new types.Enum(Some("weekly"), "/payFrequencyOptions")
-        case "2" => new types.Enum(Some("biWeekly"), "/payFrequencyOptions")
-        case "3" => new types.Enum(Some("semiMonthly"), "/payFrequencyOptions")
-        case "4" => new types.Enum(Some("monthly"), "/payFrequencyOptions")
+        case "1" => FgEnum("weekly", "/payFrequencyOptions")
+        case "2" => FgEnum("biWeekly", "/payFrequencyOptions")
+        case "3" => FgEnum("semiMonthly", "/payFrequencyOptions")
+        case "4" => FgEnum("monthly", "/payFrequencyOptions")
         case _   => throw Exception(s"$value is not a known enum for /$optionsEnumPath")
       }
     case "/socialSecurityWithheldTaxesOptions" =>
       value match {
-        case "zero"      => new types.Enum(Some("zero"), "/socialSecurityWithheldTaxesOptions")
-        case "seven"     => new types.Enum(Some("seven"), "/socialSecurityWithheldTaxesOptions")
-        case "ten"       => new types.Enum(Some("ten"), "/socialSecurityWithheldTaxesOptions")
-        case "twelve"    => new types.Enum(Some("twelve"), "/socialSecurityWithheldTaxesOptions")
-        case "twentyTwo" => new types.Enum(Some("twentyTwo"), "/socialSecurityWithheldTaxesOptions")
+        case "zero"      => FgEnum("zero", "/socialSecurityWithheldTaxesOptions")
+        case "seven"     => FgEnum("seven", "/socialSecurityWithheldTaxesOptions")
+        case "ten"       => FgEnum("ten", "/socialSecurityWithheldTaxesOptions")
+        case "twelve"    => FgEnum("twelve", "/socialSecurityWithheldTaxesOptions")
+        case "twentyTwo" => FgEnum("twentyTwo", "/socialSecurityWithheldTaxesOptions")
         case _           => throw Exception(s"$value is not a known enum for /$optionsEnumPath")
       }
     case "/overtimeCompensationRateOptions" =>
       value match {
-        case "1.5" => new types.Enum(Some("onePointFive"), "/overtimeCompensationRateOptions")
-        case "2.0" => new types.Enum(Some("two"), "/overtimeCompensationRateOptions")
-        case "2"   => new types.Enum(Some("two"), "/overtimeCompensationRateOptions")
+        case "1.5" => FgEnum("onePointFive", "/overtimeCompensationRateOptions")
+        case "2.0" => FgEnum("two", "/overtimeCompensationRateOptions")
+        case "2"   => FgEnum("two", "/overtimeCompensationRateOptions")
         // 0 is not a real overtime factor, it's just a placeholder in the spreadsheet, so this doesn't matter
-        case "0.0" => new types.Enum(Some("onePointFive"), "/overtimeCompensationRateOptions")
-        case "0"   => new types.Enum(Some("onePointFive"), "/overtimeCompensationRateOptions")
+        case "0.0" => FgEnum("onePointFive", "/overtimeCompensationRateOptions")
+        case "0"   => FgEnum("onePointFive", "/overtimeCompensationRateOptions")
         case _     => throw Exception(s"$value is not a known enum for $optionsEnumPath")
       }
     case _ => throw Exception(s"Unknown options path: $optionsEnumPath")
@@ -493,12 +465,10 @@ private val SHEET_ROW_TO_WRITABLE_FACT = Map(
   "Start date" -> s"/socialSecuritySources/#$SS_ID/startDate",
   "End date" -> s"/socialSecuritySources/#$SS_ID/endDate",
   "SS monthly benefit" -> s"/socialSecuritySources/#$SS_ID/monthlyIncome",
-  "SS monthly withholding" -> s"/socialSecuritySources/#$SS_ID/withheldRate",
   // Social Security #2
   "Start date2" -> s"/socialSecuritySources/#$SS_SPOUSE_ID/startDate",
   "End date2" -> s"/socialSecuritySources/#$SS_SPOUSE_ID/endDate",
   "SS monthly benefit2" -> s"/socialSecuritySources/#$SS_SPOUSE_ID/monthlyIncome",
-  "SS monthly withholding2" -> s"/socialSecuritySources/#$SS_SPOUSE_ID/withheldRate",
   // Other Income
   "InterestOrdinaryDividends" -> "/ordinaryDividendsIncome",
   "QualifiedDividends" -> "/qualifiedDividendsIncome",
