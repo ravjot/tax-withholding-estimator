@@ -1,4 +1,11 @@
-<dialog th:id="${modalId}" class="usa-modal--dialog" closedby="any">
+<dialog th:id="${modalId}" class="usa-modal--dialog" closedby="any"
+        th:fragment="modal(
+            modalId,
+            modalHeading,
+            modalContent,
+            footerContent
+        )"
+>
   <div class="usa-modal__content">
     <div class="usa-modal__main">
       <h1 class="usa-modal__heading" th:utext="${modalHeading}"></h1>
@@ -13,7 +20,7 @@
         </svg>
       </button>
     <div class="usa-prose" th:utext="${modalContent}"></div>
-    <div class="usa-modal__footer"></div>
+    <div class="usa-modal__footer" th:insert="${footerContent != null} ? ${footerContent} : _"></div>
     </div>
   </div>
 </dialog>

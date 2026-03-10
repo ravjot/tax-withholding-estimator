@@ -26,10 +26,14 @@ fg-collection[disallowempty="true"] fg-collection-item:only-of-type  .fg-collect
   display: none;
 }
 
-.fg-collection__determiner {
+.fg-collection__with-determiner {
   display: none;
 }
 
-fg-collection:has(fg-collection-item) .fg-collection__determiner {
+fg-collection:has(fg-collection-item) .fg-collection__without-determiner {
+    display: none;
+}
+
+fg-collection:has(fg-collection-item) .fg-collection__with-determiner {
   display: inline;
 }

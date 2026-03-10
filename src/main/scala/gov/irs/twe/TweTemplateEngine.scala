@@ -1,6 +1,7 @@
 package gov.irs.twe
 
 import gov.irs.twe.Locale
+import java.text.MessageFormat
 import org.thymeleaf.context.{ Context, ITemplateContext }
 import org.thymeleaf.messageresolver.AbstractMessageResolver
 import org.thymeleaf.templatemode.TemplateMode
@@ -24,7 +25,11 @@ case class TweMessageResolver(locale: Locale) extends AbstractMessageResolver:
       key: String,
       messageParameters: Array[Object],
   ): String =
-    locale.get(key).as[String].getOrElse(null)
+    locale
+      .get(key)
+      .as[String]
+      .map(pattern => MessageFormat.format(pattern, messageParameters*))
+      .getOrElse(null)
 
 class TweTemplateEngine {
   private val resolver = new ClassLoaderTemplateResolver()

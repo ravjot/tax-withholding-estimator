@@ -60,6 +60,10 @@ object FgCollection {
     val condition = Condition.getCondition(node, factDictionary)
     val determiner = node \@ "determiner"
 
+    if (itemName.isEmpty) {
+      throw InvalidFormConfig("item-name is a required property of FgCollection but was blank")
+    }
+
     validateFgCollection(path, factDictionary)
 
     val nodes = (node \ "_")

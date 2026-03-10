@@ -3,11 +3,16 @@ components:
     required: "(Required)"
   fg-collection:
     buttons:
-      item-name-default: Item
-      remove: Remove
-      remove-item: Remove item
-      add: Add
-      add-item: Add item
+      remove: "Remove {0}"
+      add: "Add {0}"
+      add-with-determiner: "Add {1} {0}"
+    remove-item-modal:
+      heading:
+        remove: "Are you sure you want to remove this {0}?"
+      body: "This will delete any information you’ve already entered about this {0}."
+      footer:
+        confirm: "Yes, remove this {0}"
+        cancel: "No, keep this {0}"
     determiners:
       another: another
       more: more

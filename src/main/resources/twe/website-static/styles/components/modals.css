@@ -54,6 +54,17 @@
   display: block
 }
 
+.usa-modal__button-group {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    margin-bottom: var(--units-1);
+}
+
+.usa-modal__button-group > button:not(:first-child) {
+    margin-top: var(--units-1);
+}
+
 ::backdrop {
   animation: fadeIn .15s ease-in forwards;
   background-color: rgba(0,0,0,.7);

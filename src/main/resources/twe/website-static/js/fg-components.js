@@ -540,13 +540,6 @@ class FgCollectionItem extends HTMLElement {
 
     // Make listener a persistent function so we can remove it later
     this.clearListener = () => this.clear()
-    this.removeItemListener = () => {
-      const fgCollection = this.closest('fg-collection')
-      const addButton = fgCollection.querySelector('.fg-collection__add-item')
-      this.clear()
-      addButton.focus()
-      this.dispatchEvent(new CustomEvent('fg-update'))
-    }
   }
 
   connectedCallback () {
@@ -568,7 +561,10 @@ class FgCollectionItem extends HTMLElement {
     collectionItemContent.setAttribute('id', `collection-item-${collectionId}`)
 
     this.removeButton = this.querySelector('.fg-collection-item__remove-item')
-    this.removeButton.addEventListener('click', this.removeItemListener)
+    const modalId = this.removeButton.getAttribute('for')
+    // Make listener a persistent function so that we can remove it later
+    this.clickRemoveItemListener = () => this.handleClickRemoveItem(modalId)
+    this.removeButton.addEventListener('click', this.clickRemoveItemListener)
 
     document.addEventListener('fg-clear', this.clearListener)
 
@@ -579,11 +575,25 @@ class FgCollectionItem extends HTMLElement {
   disconnectedCallback () {
     console.debug('Disconnecting', this)
 
-    this.removeButton.removeEventListener('click', this.removeItemListener)
+    this.removeButton.removeEventListener('click', this.clickRemoveItemListener)
     document.removeEventListener('fg-clear', this.clearListener)
 
     // Reset content
     this.innerHTML = ''
+  }
+
+  handleClickRemoveItem (modalId) {
+    // Override the corresponding modal's onclick to remove this collection item
+    const modal = document.querySelector(`#${modalId}`)
+    const confirmButton = modal.querySelector('.fg-collection__remove-item-modal__button-confirm')
+    confirmButton.onclick = () => {
+      const fgCollection = this.closest('fg-collection')
+      const addButton = fgCollection.querySelector('.fg-collection__add-item')
+
+      this.clear()
+      addButton.focus()
+      this.dispatchEvent(new CustomEvent('fg-update'))
+    }
   }
 
   clear () {
