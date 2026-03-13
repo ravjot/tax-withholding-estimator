@@ -824,10 +824,11 @@ function showValidationError () {
   // Focus the first invalid field
   const firstErrorFocusTarget = document.querySelector(
     'fg-alert[blocking]:not(.hidden) :is(.usa-alert__heading, .usa-alert__text),' +
-    'fg-set:not([inputtype="date"], .hidden) .usa-form-group--error .usa-fieldset,' +
+    'fg-set:not(.hidden) .usa-form-group--error .usa-fieldset,' +
     'fg-set:not(.hidden) [aria-invalid="true"]'
   )
 
+  firstErrorFocusTarget.scrollIntoView({ behavior: 'instant', block: 'center' })
   if (firstErrorFocusTarget instanceof HTMLFieldSetElement || firstErrorFocusTarget.closest('fg-alert')) {
     firstErrorFocusTarget.setAttribute('tabindex', '-1')
     firstErrorFocusTarget.focus()
