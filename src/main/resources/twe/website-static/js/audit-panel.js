@@ -191,3 +191,20 @@ export function disable () {
     link.parentElement.replaceChild(fgShow, link)
   }
 }
+
+/* Attempt to load the Fact Graph and set a validation error if it fails
+ *
+ * It's important that this function either succeeds and triggers a new page load, or fails and sets
+ * a validation message. Otherwise the form will attempt to "submit," accomplishing nothing. It
+ * works this way because the custom validation message has to be set before the 'submit' event
+ * fires (as far as I can tell).
+ */
+function loadFactGraphFromAuditPanel () {
+  const textarea = document.querySelector('#load-fact-graph')
+  try {
+    window.loadFactGraph(textarea.value)
+  } catch (error) {
+    textarea.setCustomValidity('Please enter a valid JSON')
+  }
+}
+window.loadFactGraphFromAuditPanel = loadFactGraphFromAuditPanel
