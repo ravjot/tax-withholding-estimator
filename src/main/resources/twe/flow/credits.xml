@@ -115,7 +115,7 @@
 
       <h3 condition="/isEligibleForAdoptionCredit" operator="isTrue">Adoption Credit</h3>
       <p condition="/isEligibleForAdoptionCredit" operator="isTrue">The adoption credit helps families offset the costs of adopting an eligible child.</p>
-      <p condition="/isEligibleForAdoptionCredit" operator="isTrue"><modal-link for="modal-adoption-credit-who-can-claim">Who can claim the Adoption Credit?</modal-link></p>
+      <p condition="/isEligibleForAdoptionCredit" operator="isTrue"><modal-link for="modal-adoption-credit-who-can-claim">Who can claim the adoption credit?</modal-link></p>
       <fg-set path="/adoptionEligibleChildren" if-true="/isEligibleForAdoptionCredit">
         <question>Number of adopted children</question>
         <input type="int"/>
